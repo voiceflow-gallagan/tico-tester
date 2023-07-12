@@ -3,9 +3,10 @@ const cron = require('node-cron')
 const express = require('express')
 const Mocha = require('mocha')
 const axios = require('axios')
+const rateLimit = require('express-rate-limit')
 
 const app = express()
-const port = 3000
+const port = process.env.PORT
 
 let failedTestsLastRun = []
 
@@ -43,11 +44,10 @@ async function runTests(type) {
       .on('end', resolve)
   })
 
-  const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL // Get your webhook URL from an environment variable.
+  const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
 
   // If there were any failed tests, send them to Slack
   if (testResults.failed.length > 0) {
-    // Add emoji to each failing test
     const failedTestsList = testResults.failed
       .map((test) => ':X: ' + test)
       .join('\n')
@@ -85,6 +85,14 @@ function arraysAreEqual(arr1, arr2) {
     arr1.length === arr2.length && arr1.every((item, i) => item === arr2[i])
   )
 }
+
+const testLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minutes
+  max: 1, // limit each IP to 1 requests per windowMs
+})
+
+//  apply to /run-tests endpoint
+app.use('/run-tests', testLimiter)
 
 app.get('/run-tests', async (req, res) => {
   const testResults = await runTests()

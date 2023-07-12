@@ -32,7 +32,6 @@ async function runTests(type) {
 
   // Run the tests
   await new Promise((resolve) => {
-    console.log(type)
     mocha
       .run()
       .on('pass', (test) => {

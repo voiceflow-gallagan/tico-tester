@@ -114,7 +114,9 @@ cron.schedule('*/1 * * * *', () => {
   runTests('api')
 })
 
-// Schedule tests to run every 5 minutes
+// Schedule tests to run every 5 minutes and 30 seconds
 cron.schedule('*/5 * * * *', () => {
-  runTests('tico')
+  setTimeout(() => {
+    runTests('tico')
+  }, 30 * 1000) // 30 seconds delay
 })

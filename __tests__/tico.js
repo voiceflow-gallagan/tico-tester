@@ -5,7 +5,7 @@ const chai = require('chai')
 const expect = chai.expect
 
 // Load your test configurations from a JSON file
-const tests = JSON.parse(fs.readFileSync('./__tests__/main.json', 'utf8'))
+const tests = JSON.parse(fs.readFileSync('./__tests__/tico.json', 'utf8'))
 
 describe('Tico Test Suite', function () {
   this.timeout(25000) // set a longer timeout if necessary

@@ -8,7 +8,13 @@ const rateLimit = require('express-rate-limit')
 const app = express()
 const port = process.env.PORT
 
-let failedTestsLastRun = []
+let failedTestsLastRun = {
+  api: [],
+  tico: [],
+}
+
+// Create new Mocha instance
+let mocha = new Mocha()
 
 // Tests runner
 async function runTests(type) {
@@ -16,14 +22,15 @@ async function runTests(type) {
   const currentDateTime = new Date().toLocaleString()
 
   // Path to test file
-  const testFilePath =
-    type === 'API' ? './__tests__/api.js' : './__tests__/main.js'
+  const testFilePath = `./__tests__/${type}.js`
 
-  // Create new Mocha instance
-  const mocha = new Mocha()
+  // Remove all test files from current instance
+  mocha.files = []
 
   // Delete the required test file from the cache
   delete require.cache[require.resolve(testFilePath)]
+
+  mocha = new Mocha()
 
   // Add test file to the new Mocha instance
   mocha.addFile(testFilePath)
@@ -53,13 +60,13 @@ async function runTests(type) {
 
     const message = `\nTest run at ${currentDateTime}\n${failedTestsList}`
 
-    if (!arraysAreEqual(testResults.failed, failedTestsLastRun)) {
+    if (!arraysAreEqual(testResults.failed, failedTestsLastRun[type])) {
       await axios.post(slackWebhookUrl, { text: message })
     }
   }
 
   // Find the tests which were failing but passed now
-  const nowPassingTests = failedTestsLastRun.filter(
+  const nowPassingTests = failedTestsLastRun[type].filter(
     (test) => !testResults.failed.includes(test)
   )
 
@@ -74,7 +81,7 @@ async function runTests(type) {
   }
 
   // Update failedTestsLastRun
-  failedTestsLastRun = testResults.failed
+  failedTestsLastRun[type] = testResults.failed
 
   return testResults
 }
@@ -90,11 +97,11 @@ const testLimiter = rateLimit({
   max: 1, // limit each IP to 1 requests per windowMs
 })
 
-//  apply to /run-tests endpoint
+//  apply limiter to /run-tests endpoint
 app.use('/run-tests', testLimiter)
 
 app.get('/run-tests', async (req, res) => {
-  const testResults = await runTests()
+  const testResults = await runTests('tico')
   res.json(testResults)
 })
 
@@ -104,10 +111,10 @@ app.listen(port, () => {
 
 // Schedule tests to run every 1 minute
 cron.schedule('*/1 * * * *', () => {
-  runTests('API')
+  runTests('api')
 })
 
 // Schedule tests to run every 5 minutes
 cron.schedule('*/5 * * * *', () => {
-  runTests()
+  runTests('tico')
 })
